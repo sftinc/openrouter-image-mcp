@@ -1,0 +1,30 @@
+{
+	"name": "openrouter-image-mcp",
+	"version": "1.0.0",
+	"description": "MCP server for image generation using Google Gemini 2.5 Flash Image Preview model via OpenRouter API",
+	"main": "dist/index.js",
+	"type": "module",
+	"scripts": {
+		"build": "tsc",
+		"start": "node dist/index.js",
+		"dev": "tsc && node dist/index.js"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.0.1",
+		"zod": "^4.3.5"
+	},
+	"devDependencies": {
+		"@types/node": "^20.0.0",
+		"typescript": "^5.0.0"
+	},
+	"keywords": [
+		"mcp",
+		"gemini",
+		"google",
+		"image-generation",
+		"ai",
+		"openrouter"
+	],
+	"author": "",
+	"license": "MIT"
+}
