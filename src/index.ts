@@ -21,6 +21,16 @@ server.registerTool(
 					'Optional array of input images for image-to-image generation, editing, or combining multiple images. Each element can be a local file path, base64 string, data URL, or HTTP URL.'
 				),
 			filename: z.string().describe('Base filename for saved image (without extension)'),
+			aspect_ratio: z
+				.enum(['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'])
+				.default('1:1')
+				.describe(
+					'Aspect ratio for the generated image. 1:1 (1024x1024), 2:3 (768x1152), 3:2 (1152x768), 3:4 (768x1024), 4:3 (1024x768), 4:5 (768x960), 5:4 (960x768), 9:16 (576x1024), 16:9 (1024x576), 21:9 (1344x576).'
+				),
+			image_size: z
+				.enum(['1K', '2K', '4K'])
+				.default('1K')
+				.describe('Resolution scale for the generated image. 1K (~1 megapixel), 2K (~4 megapixels), 4K (~8 megapixels).'),
 			show_full_response: z
 				.boolean()
 				.default(false)

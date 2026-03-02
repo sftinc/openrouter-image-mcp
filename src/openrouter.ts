@@ -19,6 +19,8 @@ export type GenerateImageParams = {
 	input_images?: string[]
 	filename?: string
 	show_full_response?: boolean
+	aspect_ratio?: '1:1' | '2:3' | '3:2' | '3:4' | '4:3' | '4:5' | '5:4' | '9:16' | '16:9' | '21:9'
+	image_size?: '1K' | '2K' | '4K'
 }
 
 export type GenerateImageResult = {
@@ -61,6 +63,15 @@ function validateApiKey(): string {
 }
 
 // Image utility functions
+function toAlphaCode(n: number): string {
+	let result = ''
+	while (n > 0) {
+		result = String.fromCharCode(97 + (n % 26)) + result
+		n = Math.floor(n / 26)
+	}
+	return result.padStart(9, 'a')
+}
+
 function sanitizeFilePart(s: string): string {
 	return s.replace(/[^a-z0-9_\-]+/gi, '_').slice(0, 64)
 }
@@ -154,8 +165,10 @@ async function saveImages(images: ImageInput[], baseFilename: string): Promise<s
 		try {
 			const { buffer, ext } = await resolveImageBufferAndExt(image)
 			const safeBase = sanitizeFilePart(baseFilename || 'generated_image')
-			const sortCode = Date.now().toString(36)
-			const filename = `${sortCode}_${safeBase}_${i + 1}.${ext}`
+			const sortCode = toAlphaCode(Date.now())
+			const filename = images.length > 1
+				? `${sortCode}_${safeBase}_${i + 1}.${ext}`
+				: `${sortCode}_${safeBase}.${ext}`
 			const filepath = path.join(outputDir, filename)
 
 			await fs.writeFile(filepath, buffer)
@@ -198,6 +211,8 @@ export async function generateImage({
 	input_images,
 	filename,
 	show_full_response = false,
+	aspect_ratio,
+	image_size,
 }: GenerateImageParams): Promise<GenerateImageResult> {
 	const key = validateApiKey()
 
@@ -227,6 +242,14 @@ export async function generateImage({
 				{ role: 'system', content: systemPrompt },
 				{ role: 'user', content: messageContent },
 			],
+			...(aspect_ratio || image_size
+				? {
+						image_config: {
+							...(aspect_ratio ? { aspect_ratio } : {}),
+							...(image_size ? { image_size } : {}),
+						},
+					}
+				: {}),
 		}),
 	})
 
