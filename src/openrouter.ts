@@ -3,8 +3,8 @@ import * as path from 'node:path'
 import { systemPrompt } from './prompt.js'
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1'
-const GEMINI_MODEL = 'google/gemini-3-pro-image-preview'
-// const GEMINI_MODEL = 'google/gemini-3.1-flash-image-preview'
+// const GEMINI_MODEL = 'google/gemini-3-pro-image-preview'
+const GEMINI_MODEL = 'google/gemini-3.1-flash-image-preview'
 
 type ImageInput = {
 	url?: string
