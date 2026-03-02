@@ -3,7 +3,8 @@ import * as path from 'node:path'
 import { systemPrompt } from './prompt.js'
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1'
-const GEMINI_MODEL = 'google/gemini-3.1-flash-image-preview'
+const GEMINI_MODEL = 'google/gemini-3-pro-image-preview'
+// const GEMINI_MODEL = 'google/gemini-3.1-flash-image-preview'
 
 type ImageInput = {
 	url?: string
@@ -50,7 +51,7 @@ if (!apiKey) {
 function validateApiKey(): string {
 	if (!apiKey) {
 		throw new Error(
-			'OPENROUTER_API_KEY environment variable is not set. Please set it in your Claude Desktop config or environment.'
+			'OPENROUTER_API_KEY environment variable is not set. Please set it in your Claude Desktop config or environment.',
 		)
 	}
 	if (apiKey.length < 20) {
@@ -166,9 +167,7 @@ async function saveImages(images: ImageInput[], baseFilename: string): Promise<s
 			const { buffer, ext } = await resolveImageBufferAndExt(image)
 			const safeBase = sanitizeFilePart(baseFilename || 'generated_image')
 			const sortCode = toAlphaCode(Date.now())
-			const filename = images.length > 1
-				? `${sortCode}_${safeBase}_${i + 1}.${ext}`
-				: `${sortCode}_${safeBase}.${ext}`
+			const filename = images.length > 1 ? `${sortCode}_${safeBase}_${i + 1}.${ext}` : `${sortCode}_${safeBase}.${ext}`
 			const filepath = path.join(outputDir, filename)
 
 			await fs.writeFile(filepath, buffer)
@@ -257,7 +256,7 @@ export async function generateImage({
 		let message = `OpenRouter API error: ${response.status}`
 		let provider: string | undefined
 		try {
-			const errorBody = await response.json() as {
+			const errorBody = (await response.json()) as {
 				error?: { message?: string; metadata?: { provider_name?: string; raw?: string } }
 			}
 			provider = errorBody.error?.metadata?.provider_name
