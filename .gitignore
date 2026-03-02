@@ -26,6 +26,9 @@ npm-debug.log*
 # Generated images
 generated_images/
 
+# Docs
+docs/
+
 # Temporary files
 *.tmp
 *.swp
