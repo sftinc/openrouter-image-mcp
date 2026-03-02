@@ -1,8 +1,9 @@
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
+import { systemPrompt } from './prompt.js'
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1'
-const GEMINI_MODEL = 'google/gemini-3-pro-image-preview'
+const GEMINI_MODEL = 'google/gemini-3.1-flash-image-preview'
 
 type ImageInput = {
 	url?: string
@@ -22,17 +23,17 @@ export type GenerateImageParams = {
 
 export type GenerateImageResult = {
 	success: boolean
+	statusCode: number
 	model: string
+	provider?: string
 	prompt: string
 	message: string
 	image?: {
-		type: string
-		url?: string
+		format: string
+		size: string
 		data?: string
-		size?: string
-		format?: string
+		saved_to?: string
 	}
-	saved_to?: string
 	usage?: { tokens: number }
 }
 
@@ -153,8 +154,8 @@ async function saveImages(images: ImageInput[], baseFilename: string): Promise<s
 		try {
 			const { buffer, ext } = await resolveImageBufferAndExt(image)
 			const safeBase = sanitizeFilePart(baseFilename || 'generated_image')
-			const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-			const filename = `${safeBase}_${timestamp}_${i + 1}.${ext}`
+			const sortCode = Date.now().toString(36)
+			const filename = `${sortCode}_${safeBase}_${i + 1}.${ext}`
 			const filepath = path.join(outputDir, filename)
 
 			await fs.writeFile(filepath, buffer)
@@ -222,86 +223,83 @@ export async function generateImage({
 		},
 		body: JSON.stringify({
 			model: GEMINI_MODEL,
-			messages: [{ role: 'user', content: messageContent }],
+			messages: [
+				{ role: 'system', content: systemPrompt },
+				{ role: 'user', content: messageContent },
+			],
 		}),
 	})
 
 	if (!response.ok) {
-		if (response.status === 401) {
-			throw new Error(`Authentication failed (401): Invalid API key.`)
-		} else if (response.status === 403) {
-			throw new Error(`Access denied (403): Your API key may not have access to this model.`)
+		let message = `OpenRouter API error: ${response.status}`
+		let provider: string | undefined
+		try {
+			const errorBody = await response.json() as {
+				error?: { message?: string; metadata?: { provider_name?: string; raw?: string } }
+			}
+			provider = errorBody.error?.metadata?.provider_name
+			message = errorBody.error?.metadata?.raw || errorBody.error?.message || message
+		} catch {
+			// ignore parse errors
 		}
-		throw new Error(`OpenRouter API error: ${response.status}`)
+		return {
+			success: false,
+			statusCode: response.status,
+			model: GEMINI_MODEL,
+			provider,
+			prompt,
+			message,
+		}
 	}
 
 	const data = (await response.json()) as {
 		choices: Array<{ message: { content?: string; images?: Array<{ image_url?: { url?: string } }> } }>
 		usage?: { total_tokens?: number }
+		provider?: string
 	}
 	const message = data.choices[0].message
 	const content = message.content || ''
 
-	// Extract image URL from response
-	let imageUrl: string | null = null
+	// Extract base64 image from response
+	let imageData: string | null = null
 
 	if (message.images && message.images.length > 0) {
 		const firstImage = message.images[0]
 		if (firstImage.image_url?.url) {
-			imageUrl = firstImage.image_url.url
+			imageData = firstImage.image_url.url
 		}
-	} else if (content.startsWith('http')) {
-		imageUrl = content
 	} else if (content.startsWith('data:image')) {
-		imageUrl = content
-	} else if (content.includes('http') || content.includes('![')) {
-		const markdownMatch = content.match(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/)
-		if (markdownMatch) {
-			imageUrl = markdownMatch[1]
-		} else {
-			const urlMatch = content.match(/https?:\/\/[^\s]+/)
-			if (urlMatch) {
-				imageUrl = urlMatch[0]
-			}
-		}
+		imageData = content
 	}
 
 	let savedFile: string | null = null
-	if (imageUrl) {
-		const imageInput: ImageInput =
-			imageUrl.startsWith('data:') || imageUrl.startsWith('http') ? { url: imageUrl } : { base64: imageUrl }
+	if (imageData) {
+		const imageInput: ImageInput = imageData.startsWith('data:') ? { url: imageData } : { base64: imageData }
 		const savedFiles = await saveImages([imageInput], filename || 'generated_image')
 		savedFile = savedFiles[0] || null
 	}
 
 	const result: GenerateImageResult = {
 		success: true,
+		statusCode: response.status,
 		model: GEMINI_MODEL,
+		provider: data.provider,
 		prompt,
 		message: content || 'Image generated successfully',
 	}
 
-	if (imageUrl) {
-		if (imageUrl.startsWith('data:image')) {
-			result.image = show_full_response
-				? {
-						type: 'base64',
-						data: imageUrl,
-						size: `${Math.round(imageUrl.length / 1024)}KB`,
-						format: imageUrl.substring(11, imageUrl.indexOf(';')) || 'unknown',
-				  }
-				: {
-						type: 'base64',
-						size: `${Math.round(imageUrl.length / 1024)}KB`,
-						format: imageUrl.substring(11, imageUrl.indexOf(';')) || 'unknown',
-				  }
-		} else {
-			result.image = { type: 'url', url: imageUrl }
+	if (imageData) {
+		const format = imageData.startsWith('data:image')
+			? imageData.substring(11, imageData.indexOf(';')) || 'unknown'
+			: 'png'
+		result.image = {
+			format,
+			size: `${Math.round(imageData.length / 1024)}KB`,
+			saved_to: savedFile || undefined,
 		}
-	}
-
-	if (savedFile) {
-		result.saved_to = savedFile
+		if (show_full_response) {
+			result.image.data = imageData
+		}
 	}
 
 	if (data.usage) {

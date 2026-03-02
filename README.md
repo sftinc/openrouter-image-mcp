@@ -142,7 +142,11 @@ Control image output through your prompt text:
 
 ## Output
 
-Generated images are saved to `./generated_images/` directory with timestamped filenames.
+Generated images are saved to `./generated_images/` directory with filenames in the format:
+
+`{sort_code}_{filename}_{index}.{ext}`
+
+The sort code is a base36-encoded timestamp that ensures files are listed in chronological order when sorted alphabetically (e.g., `jzk5m1kv_my_logo_1.png`).
 
 ## License
 
