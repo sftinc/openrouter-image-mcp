@@ -14,6 +14,27 @@ An MCP (Model Context Protocol) server for AI image generation via OpenRouter AP
 -   Node.js 18+
 -   An [OpenRouter](https://openrouter.ai/) API key
 
+### Installing Node.js
+
+**macOS:**
+
+```bash
+# Option 1: Download the installer from https://nodejs.org/en/download
+# Option 2: Using Homebrew
+brew install node
+```
+
+**Windows:**
+
+Download and run the installer from [https://nodejs.org/en/download](https://nodejs.org/en/download). The LTS version (currently v24) is recommended. The installer includes npm.
+
+Verify your installation:
+
+```bash
+node --version
+npm --version
+```
+
 ## Installation
 
 ```bash
@@ -28,7 +49,7 @@ npm run build
 The image generation model is configured in `src/openrouter.ts`:
 
 ```typescript
-const GEMINI_MODEL = 'google/gemini-3-pro-image-preview'
+const GEMINI_MODEL = 'google/gemini-3.1-flash-image-preview'
 ```
 
 To use a different model, change this value to any image-capable model available on [OpenRouter](https://openrouter.ai/models). After changing, rebuild with `npm run build`.
