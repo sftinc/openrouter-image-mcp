@@ -14,26 +14,14 @@ An MCP (Model Context Protocol) server for AI image generation via OpenRouter AP
 -   Node.js 18+
 -   An [OpenRouter](https://openrouter.ai/) API key
 
-### Installing Node.js
-
-**macOS:**
-
-```bash
-# Option 1: Download the installer from https://nodejs.org/en/download
-# Option 2: Using Homebrew
-brew install node
-```
-
-**Windows:**
-
-Download and run the installer from [https://nodejs.org/en/download](https://nodejs.org/en/download). The LTS version (currently v24) is recommended. The installer includes npm.
-
-Verify your installation:
+Verify your Node.js installation:
 
 ```bash
 node --version
 npm --version
 ```
+
+If Node.js is not installed, download it from [nodejs.org](https://nodejs.org/en/download).
 
 ## Installation
 
