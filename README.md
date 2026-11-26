@@ -108,7 +108,7 @@ Use the full path to `node` as the command if Claude Desktop can't find it. Set 
 ### Environment Variables
 
 -   `OPENROUTER_API_KEY` (required): Your OpenRouter API key
--   `OUTPUT_DIR` (optional): Folder to save images in. Default: `./generated_images/` under the folder the server was started from.
+-   `OUTPUT_DIR` (optional): Folder to save images in. Default: `./generated_images/` under the folder the server was started from. When that is the root of the disk or can't be written to (as under Claude Desktop), images go to `~/Downloads`, or your home folder if there is no Downloads folder.
 -   `RETURN_IMAGE` (optional): Set to any value to make `return_image` default to true
 
 ## Usage
@@ -126,7 +126,7 @@ Generate images from text prompts or transform existing images.
 -   `input_images` (optional): Array of input images for image-to-image generation, editing, or combining multiple images. Each element can be a file path, URL, base64, or data URL.
 -   `aspect_ratio` (default: `1:1`): One of `1:1`, `2:3`, `3:2`, `3:4`, `4:3`, `4:5`, `5:4`, `9:16`, `16:9`, `21:9`
 -   `image_size` (default: `1K`): `1K`, `2K` or `4K`
--   `return_image` (default: false, or true when `RETURN_IMAGE` is set): Also return a small JPEG preview in the tool result, so the client can show the image. The full-size file is always saved to disk.
+-   `return_image` (default: false, or true when `RETURN_IMAGE` is set): Also return a small JPEG preview in the tool result, so the client can show the image. The full-size file is saved to disk. If saving fails, the preview is returned anyway, with a `save_error`.
 
 **Examples:**
 
@@ -163,7 +163,7 @@ Control image output through your prompt text:
 
 ## Output
 
-Generated images are saved to `OUTPUT_DIR`, or `./generated_images/` when it isn't set, with filenames in the format:
+Generated images are saved to `OUTPUT_DIR`, or `./generated_images/` when it isn't set (see the fallback under Environment Variables), with filenames in the format:
 
 `{sort_code}_{filename}.{ext}`
 

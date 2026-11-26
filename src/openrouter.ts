@@ -43,6 +43,25 @@ export async function resolveInput(input: string): Promise<string> {
 	throw new Error(`Not a supported image input (expected a URL, data URL, base64 or ${Object.keys(IMAGE_MIME).join('/')} file): ${input.slice(0, 200)}`)
 }
 
+/**
+ * Where images are saved: OUTPUT_DIR, else ./generated_images under the working directory. Clients such as
+ * Claude Desktop start the server at the filesystem root, or somewhere unwritable, so then it's ~/Downloads,
+ * or the home folder when there is no Downloads folder.
+ */
+export async function outputDir(): Promise<string> {
+	if (process.env.OUTPUT_DIR) {
+		await fs.mkdir(process.env.OUTPUT_DIR, { recursive: true })
+		return process.env.OUTPUT_DIR
+	}
+	const cwd = process.cwd()
+	if (cwd !== path.parse(cwd).root) {
+		const dir = path.join(cwd, 'generated_images')
+		if (await fs.mkdir(dir, { recursive: true }).then(() => true, () => false)) return dir
+	}
+	const downloads = path.join(os.homedir(), 'Downloads')
+	return (await fs.stat(downloads).catch(() => null))?.isDirectory() ? downloads : os.homedir()
+}
+
 function decodeImage(image: string): { buffer: Buffer; ext: string } {
 	const m = image.match(/^data:image\/([a-z0-9+.-]+);base64,(.*)$/is)
 	const ext = (m?.[1] ?? 'png').toLowerCase().replace('jpeg', 'jpg').replace('svg+xml', 'svg')
@@ -101,22 +120,29 @@ export async function generateImage({
 	const content = message?.content ?? ''
 	const images = (message?.images ?? []).map((i) => i.image_url?.url).filter((u): u is string => !!u)
 	if (!images.length && content.startsWith('data:image')) images.push(content)
-	if (!images.length) throw new Error(
+	if (!images.length)
+		throw new Error(
 			`The model returned no image (finish reason: ${choice?.native_finish_reason ?? choice?.finish_reason ?? 'unknown'}). Its reply: ${content || '(empty)'}`,
 		)
 
-	const outputDir = process.env.OUTPUT_DIR || path.join(process.cwd(), 'generated_images')
-	await fs.mkdir(outputDir, { recursive: true })
 	const base = `${Date.now().toString(36)}_${filename.replace(/[^a-z0-9_-]+/gi, '_').slice(0, 64) || 'generated_image'}`
 
-	const saved: Array<{ saved_to: string; size: string }> = []
+	const saved: Array<{ saved_to?: string; save_error?: string; size: string }> = []
 	const previews: Content[] = []
 	for (const [i, image] of images.entries()) {
 		const { buffer, ext } = decodeImage(image)
-		const filepath = path.join(outputDir, `${base}${images.length > 1 ? `_${i + 1}` : ''}.${ext}`)
-		await fs.writeFile(filepath, buffer)
-		saved.push({ saved_to: filepath, size: `${Math.round(buffer.length / 1024)}KB` })
-		if (return_image) {
+		const size = `${Math.round(buffer.length / 1024)}KB`
+		let saveError: string | undefined
+		try {
+			const filepath = path.join(await outputDir(), `${base}${images.length > 1 ? `_${i + 1}` : ''}.${ext}`)
+			await fs.writeFile(filepath, buffer)
+			saved.push({ saved_to: filepath, size })
+		} catch (err) {
+			saveError = `Not saved: ${(err as Error).message}`
+			saved.push({ save_error: saveError, size })
+		}
+		// When the save fails, the preview is the only copy of a paid result, so it's returned regardless.
+		if (return_image || saveError) {
 			// A small JPEG keeps the tool result well under client size limits; the file on disk is full size.
 			const preview = await sharp(buffer).resize(1024, 1024, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 80 }).toBuffer()
 			previews.push({ type: 'image', data: preview.toString('base64'), mimeType: 'image/jpeg' })
