@@ -11,7 +11,7 @@ An MCP (Model Context Protocol) server for AI image generation via OpenRouter AP
 
 ## Prerequisites
 
--   Node.js 18+
+-   Node.js 22+
 -   An [OpenRouter](https://openrouter.ai/) API key
 
 Verify your Node.js installation:
@@ -37,7 +37,7 @@ npm run build
 The image generation model is configured in `src/openrouter.ts`:
 
 ```typescript
-const GEMINI_MODEL = 'google/gemini-3.1-flash-image-preview'
+const GEMINI_MODEL = 'google/gemini-3.1-flash-image'
 ```
 
 To use a different model, change this value to any image-capable model available on [OpenRouter](https://openrouter.ai/models). After changing, rebuild with `npm run build`.
@@ -94,12 +94,22 @@ Add this to your config file:
 			"command": "node",
 			"args": ["/path/to/image-mcp/dist/index.js"],
 			"env": {
-				"OPENROUTER_API_KEY": "sk-or-your-api-key"
+				"OPENROUTER_API_KEY": "sk-or-your-api-key",
+				"OUTPUT_DIR": "/path/to/generated_images",
+				"RETURN_IMAGE": "1"
 			}
 		}
 	}
 }
 ```
+
+Use the full path to `node` as the command if Claude Desktop can't find it. Set `OUTPUT_DIR` here, because Claude Desktop doesn't start the server in a project folder. `RETURN_IMAGE` makes the tool return a preview that Claude Desktop shows inline.
+
+### Environment Variables
+
+-   `OPENROUTER_API_KEY` (required): Your OpenRouter API key
+-   `OUTPUT_DIR` (optional): Folder to save images in. Default: `./generated_images/` under the folder the server was started from.
+-   `RETURN_IMAGE` (optional): Set to any value to make `return_image` default to true
 
 ## Usage
 
@@ -114,7 +124,9 @@ Generate images from text prompts or transform existing images.
 -   `prompt` (required): Text description of the image to generate
 -   `filename` (required): Base filename for saved image (without extension)
 -   `input_images` (optional): Array of input images for image-to-image generation, editing, or combining multiple images. Each element can be a file path, URL, base64, or data URL.
--   `show_full_response` (default: false): Include base64 data in response
+-   `aspect_ratio` (default: `1:1`): One of `1:1`, `2:3`, `3:2`, `3:4`, `4:3`, `4:5`, `5:4`, `9:16`, `16:9`, `21:9`
+-   `image_size` (default: `1K`): `1K`, `2K` or `4K`
+-   `return_image` (default: false, or true when `RETURN_IMAGE` is set): Also return a small JPEG preview in the tool result, so the client can show the image. The full-size file is always saved to disk.
 
 **Examples:**
 
@@ -151,11 +163,19 @@ Control image output through your prompt text:
 
 ## Output
 
-Generated images are saved to `./generated_images/` directory with filenames in the format:
+Generated images are saved to `OUTPUT_DIR`, or `./generated_images/` when it isn't set, with filenames in the format:
 
-`{sort_code}_{filename}_{index}.{ext}`
+`{sort_code}_{filename}.{ext}`
 
-The sort code is a base36-encoded timestamp that ensures files are listed in chronological order when sorted alphabetically (e.g., `jzk5m1kv_my_logo_1.png`).
+When the model returns more than one image, each gets an index: `{sort_code}_{filename}_{index}.{ext}`.
+
+The sort code is a base36-encoded timestamp that ensures files are listed in chronological order when sorted alphabetically (e.g., `mwws0za4_my_logo.png`).
+
+## Development
+
+```bash
+npm test    # Build and run the tests
+```
 
 ## License
 

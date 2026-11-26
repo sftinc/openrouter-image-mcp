@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { generateImage } from './openrouter.js'
 import { promptDescription } from './prompt.js'
 
-const server = new McpServer({ name: 'image-mcp', version: '1.0.0' }, { capabilities: { tools: {} } })
+const server = new McpServer({ name: 'image-mcp', version: '1.1.0' })
 
 server.registerTool(
 	'generate',
@@ -31,18 +31,13 @@ server.registerTool(
 				.enum(['1K', '2K', '4K'])
 				.default('1K')
 				.describe('Resolution scale for the generated image. 1K (~1 megapixel), 2K (~4 megapixels), 4K (~8 megapixels).'),
-			show_full_response: z
+			return_image: z
 				.boolean()
-				.default(false)
-				.describe('Show full response including base64 data (default: false)'),
+				.default(!!process.env.RETURN_IMAGE)
+				.describe('Also return a preview of the image in the tool result, so it can be seen without opening the saved file.'),
 		},
 	},
-	async (params) => {
-		const result = await generateImage(params)
-		return {
-			content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }],
-		}
-	}
+	async (params) => ({ content: await generateImage(params) })
 )
 
 async function main() {
@@ -51,4 +46,7 @@ async function main() {
 	console.error('Image Generation MCP Server running on stdio')
 }
 
-main().catch(console.error)
+main().catch((err) => {
+	console.error(err)
+	process.exit(1)
+})
